@@ -1,5 +1,6 @@
 #pragma once
 
+#include <climits>
 #include <filesystem>
 
 struct CommandLine

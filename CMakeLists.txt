@@ -181,6 +181,7 @@ endif()
 
 # ============================================================================= Engine stuff
 if (ENABLE_BUILD_ENGINE)
+	find_package(CLI11 CONFIG REQUIRED)
 	file(GLOB_RECURSE SRCS "FAStar/*.cpp")
 	add_library(FAStar STATIC ${SRCS})
 	target_sources(
@@ -253,6 +254,7 @@ if (ENABLE_BUILD_ENGINE)
 			${SRCS}
 	)
 	target_link_libraries(Cv4HeadlessMiniEngine PRIVATE Cv4CommonEngineLib)
+	target_link_libraries(Cv4HeadlessMiniEngine PRIVATE CLI11::CLI11)
 
 	# ============================================================================= Cv4MiniEngine
 	file(GLOB_RECURSE SRCS "CmdCiv4/*.cpp")
@@ -265,6 +267,7 @@ if (ENABLE_BUILD_ENGINE)
 	)
 	target_link_libraries(Cv4MiniEngine PRIVATE Cv4CommonEngineLib)
 	target_link_libraries(Cv4MiniEngine PRIVATE HeckTUI)
+	target_link_libraries(Cv4MiniEngine PRIVATE CLI11::CLI11)
 
 	target_link_libraries(Cv4MiniEngine PRIVATE SFML::Audio SFML::System)
 

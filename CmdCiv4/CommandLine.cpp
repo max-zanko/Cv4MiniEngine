@@ -1,6 +1,10 @@
 #include "CommandLine.h"
 
+#if __has_include(<CLI/CLI.hpp>)
+#include <CLI/CLI.hpp>
+#else
 #include <CLI11.hpp>
+#endif
 
 using namespace cvengine;
 

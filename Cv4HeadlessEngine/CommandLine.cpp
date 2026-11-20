@@ -1,6 +1,10 @@
 #include "CommandLine.h"
 
+#if __has_include(<CLI/CLI.hpp>)
+#include <CLI/CLI.hpp>
+#else
 #include <CLI11.hpp>
+#endif
 
 CommandLine parseCommandLine(int argc, char** argv)
 {
