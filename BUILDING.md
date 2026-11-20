@@ -22,6 +22,57 @@ When building dependencies with cmake, remember to build AND install (install to
 
 Tested with VS 2026 MSVC and Clang-CL, Ubuntu Clang 20, and Ubuntu 25.10 G++ 15.
 
+#### Isolated Docker build (Linux)
+
+The Docker build installs its toolchain and distribution packages only inside
+the image. Source dependencies are pinned Git submodules under `external/`.
+It builds the regular Release DLL, engine, headless engine, input tester, and
+player bot. Native file dialogs are disabled.
+
+```sh
+git submodule update --init --recursive
+docker build -t cv4mini-build:local .
+docker run --rm --user "$(id -u):$(id -g)" \
+    --security-opt label=disable \
+    -v "$PWD:/workspace" cv4mini-build:local
+```
+
+`--security-opt label=disable` permits the workspace bind mount on SELinux
+hosts without relabeling the repository. Build files are in `out/docker-build`
+and the installed application is in `out/docker-install`. Both are ignored by
+Git. Repeating the `docker run` command performs an incremental build.
+Set `-e BUILD_JOBS=8` before the image name to change build parallelism, or
+append `bash docker/build.sh -DENABLE_GAMECOREDLL_ENHANCEMENTS=ON` to enable
+the enhanced DLL.
+
+To check the installed binaries within the same dependency environment:
+
+```sh
+docker run --rm --user "$(id -u):$(id -g)" \
+    --security-opt label=disable -v "$PWD:/workspace" \
+    -w /workspace/out/docker-install \
+    -e LD_LIBRARY_PATH=/opt/deps/lib:.:./CvGameCoreDLL_Regular \
+    cv4mini-build:local ./Cv4MiniEngine --help
+```
+
+To play with your own Civilization IV: Beyond the Sword installation:
+
+```sh
+./docker/run.sh "/path/to/Civ4"
+# Engine arguments can follow the installation path:
+./docker/run.sh "/path/to/Civ4" --autostart
+```
+
+The installation folder must contain `Beyond the Sword/Civ4BeyondSword.exe`.
+On first launch, select `/civ4` in the directory prompt. The script mounts the
+game files read-only and stores configuration, saves, and caches under
+`out/runtime`. It works from any working directory. Logs are written to
+`out/docker-install/log.txt`.
+
+Audio additionally requires access to the host audio service. The installed
+binaries are built for the container environment; host execution may require
+additional runtime libraries.
+
 #### Windows VS
 
 * Clone this repository, with submodules.
