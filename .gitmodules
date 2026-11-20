@@ -1,3 +1,24 @@
 [submodule "FAStar"]
 	path = FAStar
 	url = https://github.com/fortsnek9348/Cv4MiniEngineFAStar.git
+[submodule "external/s3tc-dxt-decompression"]
+	path = external/s3tc-dxt-decompression
+	url = https://github.com/Benjamin-Dobell/s3tc-dxt-decompression.git
+[submodule "external/stb"]
+	path = external/stb
+	url = https://github.com/nothings/stb.git
+[submodule "external/SFML"]
+	path = external/SFML
+	url = https://github.com/SFML/SFML.git
+[submodule "external/cpython"]
+	path = external/cpython
+	url = https://github.com/python/cpython.git
+[submodule "external/pugixml"]
+	path = external/pugixml
+	url = https://github.com/zeux/pugixml.git
+[submodule "external/pybind11"]
+	path = external/pybind11
+	url = https://github.com/pybind/pybind11.git
+[submodule "external/CLI11"]
+	path = external/CLI11
+	url = https://github.com/CLIUtils/CLI11.git
