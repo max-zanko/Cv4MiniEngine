@@ -236,6 +236,45 @@ namespace
 		else
 			throw fs::filesystem_error("Could not create recursive_directory_iterator.", root, ec);
 	}
+
+	std::optional<fs::path> tryResolveMountPath(const fs::path& mountPhysRoot, const fs::path& path)
+	{
+		if (fs::path trivialPhysPath = mountPhysRoot / path; fs::exists(trivialPhysPath))
+			return trivialPhysPath;
+
+#if IS_CASE_SENSITIVE_PLATFORM
+		// Both lookup and enumeration must follow Windows' case-insensitive paths.
+		if (!fs::is_directory(mountPhysRoot))
+			return std::nullopt;
+		fs::path incrementalPhysPath = mountPhysRoot;
+		for (const fs::path& segment : path)
+		{
+			if (fs::exists(incrementalPhysPath / segment))
+				incrementalPhysPath /= segment;
+			else
+			{
+				fs::path::string_type chosenName;
+				const std::wstring segmentName = segment.wstring();
+				for (const fs::directory_entry& dirEntry : fs::directory_iterator(incrementalPhysPath, fs::directory_options::skip_permission_denied))
+				{
+					const fs::path name = dirEntry.path().filename();
+					if (heck::ci_wstring_view(name.wstring()) == heck::ci_wstring_view(segmentName))
+					{
+						if (!chosenName.empty())
+							throw fs::filesystem_error("Ambiguous file lookup in VFS on case-sensitive platform.", path, mountPhysRoot, std::make_error_code(std::errc::no_such_file_or_directory));
+						chosenName = name;
+					}
+				}
+				if (chosenName.empty())
+					return std::nullopt;
+				incrementalPhysPath /= chosenName;
+			}
+		}
+		return incrementalPhysPath;
+#else
+		return std::nullopt;
+#endif
+	}
 }
 
 static fs::path forceAbsolute(const fs::path& path)
@@ -475,7 +514,10 @@ struct CvVFS::Internals
 
 		for (const auto& [mountI, mountPhysRoot] : mMountings | std::views::enumerate)
 		{
-			if (auto optIt = getRecursiveDirectoryIteratorIfExists(mountPhysRoot / vfsPath))
+			const auto physicalDir = tryResolveMountPath(mountPhysRoot, vfsPath);
+			if (!physicalDir)
+				continue;
+			if (auto optIt = getRecursiveDirectoryIteratorIfExists(*physicalDir))
 			{
 				for (const fs::directory_entry& dirEntry : *optIt)
 				{
@@ -513,54 +555,14 @@ struct CvVFS::Internals
 	//	throw std::filesystem::filesystem_error("VFS failed to resolve path.", path, std::make_error_code(std::errc::no_such_file_or_directory));
 
 #if IS_CASE_SENSITIVE_PLATFORM
-		const std::wstring genericPath = path.generic_wstring();
-		const std::vector pathSegs = genericPath | std::views::split(L'/') | std::ranges::to<std::vector>();
-		if (pathSegs.empty())
+		if (path.empty())
 			throw std::filesystem::filesystem_error("Empty path.", path, std::make_error_code(std::errc::no_such_file_or_directory));
 #endif
 
 		for (const fs::path& mountPhysRoot : mMountings | std::views::reverse)
 		{
-			if (fs::path trivialPhysPath = mountPhysRoot / path; fs::exists(trivialPhysPath))
-				return trivialPhysPath;
-
-#if IS_CASE_SENSITIVE_PLATFORM
-			// Need to enumerate dirs ourselves to do case-insensitive file lookup.
-			fs::path incrementalPhysPath = mountPhysRoot;
-			bool found = true;
-			for (const std::ranges::subrange segSR : pathSegs)
-			{
-				const std::basic_string_view seg(segSR);
-				// Try the obvious first.
-				if (fs::exists(incrementalPhysPath / seg))
-					incrementalPhysPath /= seg;
-				else
-				{
-					fs::path::string_type chosenName;
-					for (const fs::directory_entry& dirEntry : fs::directory_iterator(incrementalPhysPath, fs::directory_options::skip_permission_denied))
-					{
-						const fs::path name = dirEntry.path().filename();
-						if (heck::ci_wstring_view(name.wstring()) == heck::ci_wstring_view(seg))
-						{
-							if (!chosenName.empty())
-								throw std::filesystem::filesystem_error("Ambiguous file lookup in VFS on case-sensitive platform.", path, mountPhysRoot, std::make_error_code(std::errc::no_such_file_or_directory));
-							chosenName = name;
-						}
-					}
-
-					if (chosenName.empty())
-					{
-						found = false;
-						break;
-					}
-
-					incrementalPhysPath /= chosenName;
-				}
-			}
-
-			if (found)
-				return incrementalPhysPath;
-#endif
+			if (auto resolvedPath = tryResolveMountPath(mountPhysRoot, path))
+				return resolvedPath;
 		}
 		
 		return std::nullopt;

@@ -877,12 +877,15 @@ CvCacheObject* MyCvDLLUtility::createGlobalTextCacheObject([[maybe_unused]] cons
 		stream->Read(&cachedLanguage);
 		stream->Read(&numLanguages);
 		//assert(CvGameText::NUM_LANGUAGES > 0); // This needs to be initialised!
-		if (cachedLanguage != CvUserProfile::getInstance().getLanguage())// || numLanguages != CvGameText::NUM_LANGUAGES)
+		if (cachedLanguage != CvUserProfile::getInstance().getLanguage() || numLanguages <= 0)
+			return false;
+		unsigned int numEntries = 0;
+		stream->Read(&numEntries);
+		// A failed XML enumeration in an older build could leave an empty cache.
+		if (numEntries == 0)
 			return false;
 		// Is this supposed to be read in? I don't know.
 		CvGameText::NUM_LANGUAGES = numLanguages;
-		unsigned int numEntries = 0;
-		stream->Read(&numEntries);
 		translator.textEntries.clear();
 		translator.textEntries.reserve(numEntries);
 		for (unsigned int i = 0; i < numEntries; ++i)
